@@ -4,7 +4,6 @@
 *.dll
 *.so
 *.dylib
-jsonstat
 
 # Test binary, built with `go test -c`
 *.test
