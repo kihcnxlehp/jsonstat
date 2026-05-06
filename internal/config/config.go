@@ -40,6 +40,32 @@ func loadFile(path string) (fileConfig, error) {
 	return fileCfg, nil
 }
 
+func (c Config) Validate() error {
+
+	if c.MaxRecords < 0 {
+		return fmt.Errorf("max records must be greater than or equal to 0: %d", c.MaxRecords)
+	}
+
+	validLevels := map[string]bool{
+		"debug": true, "info": true, "warn": true, "error": true,
+	}
+	if !validLevels[c.LogLevel] {
+		return fmt.Errorf("invalid log level: %s", c.LogLevel)
+	}
+
+	if (c.FilterField != "" && c.FilterValue == "") || (c.FilterField == "" && c.FilterValue != "") {
+		return fmt.Errorf("both -field and -value must be specified together")
+	}
+
+	if c.InputFile != "-" {
+		if _, err := os.Stat(c.InputFile); os.IsNotExist(err) {
+			return fmt.Errorf("input file %q does not exist", c.InputFile)
+		}
+	}
+
+	return nil
+}
+
 // Load строит конфигурацию по цепочке: defaults -> file -> env -> flags.
 func Load() Config {
 	// 1. Defaults

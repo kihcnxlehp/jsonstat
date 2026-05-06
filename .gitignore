@@ -16,3 +16,7 @@ go.work
 
 # Environment variables
 .env
+
+# IDE settings (JetBrains)
+.idea/
+*.iml
