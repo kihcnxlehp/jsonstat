@@ -2,11 +2,15 @@ package config
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 )
+
+var ErrHelpRequested = errors.New("help requested")
 
 // Config содержит всю конфигурацию утилиты.
 type Config struct {
@@ -22,7 +26,7 @@ type fileConfig struct {
 	MaxRecords int    `json:"max_records"`
 }
 
-// loadFile загружает кофиг
+// loadFile загружает конфиг
 func loadFile(path string) (fileConfig, error) {
 	var fileCfg fileConfig
 
@@ -33,7 +37,6 @@ func loadFile(path string) (fileConfig, error) {
 
 	err = json.Unmarshal(file, &fileCfg)
 	if err != nil {
-		fmt.Println("Error unmarshalling file: ", err)
 		return fileCfg, fmt.Errorf("failed to unmarshal config file: %w", err)
 	}
 
@@ -41,7 +44,6 @@ func loadFile(path string) (fileConfig, error) {
 }
 
 func (c Config) Validate() error {
-
 	if c.MaxRecords < 0 {
 		return fmt.Errorf("max records must be greater than or equal to 0: %d", c.MaxRecords)
 	}
@@ -67,7 +69,7 @@ func (c Config) Validate() error {
 }
 
 // Load строит конфигурацию по цепочке: defaults -> file -> env -> flags.
-func Load() Config {
+func Load() (Config, error) {
 	// 1. Defaults
 	cfg := Config{
 		InputFile:   "input.json",
@@ -85,7 +87,9 @@ func Load() Config {
 
 	fileCfg, err := loadFile(configPath)
 	if err != nil {
-		fmt.Println("Error loading config: ", err)
+		if !errors.Is(err, os.ErrNotExist) {
+			return cfg, fmt.Errorf("load config: %w", err)
+		}
 	} else {
 		if fileCfg.LogLevel != "" {
 			cfg.LogLevel = fileCfg.LogLevel
@@ -108,6 +112,8 @@ func Load() Config {
 	if v := os.Getenv("JSONSTAT_MAX_RECORDS"); v != "" {
 		if n, convertErr := strconv.Atoi(v); convertErr == nil {
 			cfg.MaxRecords = n
+		} else {
+			log.Printf("failed to convert JSONSTAT_MAX_RECORDS to integer: %s", v)
 		}
 	}
 	if v := os.Getenv("JSONSTAT_LOG_LEVEL"); v != "" {
@@ -126,13 +132,9 @@ func Load() Config {
 
 	flag.Parse()
 
-	flag.Visit(func(f *flag.Flag) {
-	})
-
 	if *help {
-		flag.Usage()
-		os.Exit(0)
+		return cfg, ErrHelpRequested
 	}
 
-	return cfg
+	return cfg, nil
 }
