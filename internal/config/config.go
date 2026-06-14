@@ -5,12 +5,25 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"strconv"
 )
 
 var ErrHelpRequested = errors.New("help requested")
+
+var validFields = map[string]struct{}{
+	"id":     {},
+	"name":   {},
+	"role":   {},
+	"salary": {},
+}
+
+var validLevels = map[string]struct{}{
+	"debug": {},
+	"info":  {},
+	"warn":  {},
+	"error": {},
+}
 
 // Config содержит всю конфигурацию утилиты.
 type Config struct {
@@ -23,19 +36,23 @@ type Config struct {
 
 type fileConfig struct {
 	LogLevel   string `json:"log_level"`
-	MaxRecords int    `json:"max_records"`
+	MaxRecords *int   `json:"max_records"`
 }
 
 // loadFile загружает конфиг
 func loadFile(path string) (fileConfig, error) {
 	var fileCfg fileConfig
 
-	file, err := os.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return fileCfg, fmt.Errorf("failed to read config file: %w", err)
 	}
 
-	err = json.Unmarshal(file, &fileCfg)
+	if len(data) == 0 {
+		return fileCfg, nil
+	}
+
+	err = json.Unmarshal(data, &fileCfg)
 	if err != nil {
 		return fileCfg, fmt.Errorf("failed to unmarshal config file: %w", err)
 	}
@@ -48,10 +65,7 @@ func (c Config) Validate() error {
 		return fmt.Errorf("max records must be greater than or equal to 0: %d", c.MaxRecords)
 	}
 
-	validLevels := map[string]bool{
-		"debug": true, "info": true, "warn": true, "error": true,
-	}
-	if !validLevels[c.LogLevel] {
+	if _, ok := validLevels[c.LogLevel]; !ok {
 		return fmt.Errorf("invalid log level: %s", c.LogLevel)
 	}
 
@@ -59,9 +73,9 @@ func (c Config) Validate() error {
 		return fmt.Errorf("both -field and -value must be specified together")
 	}
 
-	if c.InputFile != "-" {
-		if _, err := os.Stat(c.InputFile); os.IsNotExist(err) {
-			return fmt.Errorf("input file %q does not exist", c.InputFile)
+	if c.FilterField != "" {
+		if _, ok := validFields[c.FilterField]; !ok {
+			return fmt.Errorf("invalid filter field: %s", c.FilterField)
 		}
 	}
 
@@ -94,8 +108,8 @@ func Load() (Config, error) {
 		if fileCfg.LogLevel != "" {
 			cfg.LogLevel = fileCfg.LogLevel
 		}
-		if fileCfg.MaxRecords != 0 {
-			cfg.MaxRecords = fileCfg.MaxRecords
+		if fileCfg.MaxRecords != nil {
+			cfg.MaxRecords = *fileCfg.MaxRecords
 		}
 	}
 
@@ -110,11 +124,12 @@ func Load() (Config, error) {
 		cfg.FilterValue = v
 	}
 	if v := os.Getenv("JSONSTAT_MAX_RECORDS"); v != "" {
-		if n, convertErr := strconv.Atoi(v); convertErr == nil {
-			cfg.MaxRecords = n
-		} else {
-			log.Printf("failed to convert JSONSTAT_MAX_RECORDS to integer: %s", v)
+		n, err := strconv.Atoi(v)
+		if err != nil {
+			return cfg, fmt.Errorf("invalid JSONSTAT_MAX_RECORDS: %w", err)
 		}
+
+		cfg.MaxRecords = n
 	}
 	if v := os.Getenv("JSONSTAT_LOG_LEVEL"); v != "" {
 		cfg.LogLevel = v
