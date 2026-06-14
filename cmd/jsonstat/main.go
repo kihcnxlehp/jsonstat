@@ -4,6 +4,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 
@@ -15,7 +16,7 @@ func run() error {
 	cfg, err := config.Load()
 	if errors.Is(err, config.ErrHelpRequested) {
 		flag.Usage()
-		os.Exit(0)
+		return nil
 	}
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
@@ -28,7 +29,22 @@ func run() error {
 	log.Printf("processing %s (max=%d filter=%s=%s)",
 		cfg.InputFile, cfg.MaxRecords, cfg.FilterField, cfg.FilterValue)
 
-	stats, err := processor.Process(cfg.InputFile, cfg.FilterField, cfg.FilterValue, cfg.MaxRecords)
+	var input io.Reader
+
+	if cfg.InputFile == "-" {
+		input = os.Stdin
+	} else {
+		file, err := os.Open(cfg.InputFile)
+		if err != nil {
+			return fmt.Errorf("open input file: %w", err)
+		}
+
+		defer file.Close()
+
+		input = file
+	}
+
+	stats, err := processor.Process(input, os.Stdout, cfg.FilterField, cfg.FilterValue, cfg.MaxRecords)
 	if err != nil {
 		return fmt.Errorf("process: %w", err)
 	}
