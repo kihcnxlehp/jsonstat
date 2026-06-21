@@ -60,6 +60,7 @@ func loadFile(path string) (fileConfig, error) {
 	return fileCfg, nil
 }
 
+// Validate валидирует конфиг
 func (c Config) Validate() error {
 	if c.MaxRecords < 0 {
 		return fmt.Errorf("max records must be greater than or equal to 0: %d", c.MaxRecords)
