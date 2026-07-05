@@ -67,7 +67,7 @@ docker build -t jsonstat .
 docker run --rm -v "$(pwd):/app/data" jsonstat -input /app/data/data.jsonl -field role -value engineer
 ```
 
-> 💡 **Why volume mount?**  
+> **Why volume mount?**  
 > `jsonstat` reads local files, but Docker containers are isolated. The `-v` flag maps your current directory to `/app/data` inside the container. The `-input` path **must** point to this mounted directory.
 
 ---
