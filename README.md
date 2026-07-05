@@ -56,6 +56,20 @@ Or run directly:
 go run .
 ```
 
+###  Run with Docker
+No Go installation required. Build and run the CLI directly in a container:
+
+```bash
+# 1. Build the image
+docker build -t jsonstat .
+
+# 2. Run with your data
+docker run --rm -v "$(pwd):/app/data" jsonstat -input /app/data/data.jsonl -field role -value engineer
+```
+
+> 💡 **Why volume mount?**  
+> `jsonstat` reads local files, but Docker containers are isolated. The `-v` flag maps your current directory to `/app/data` inside the container. The `-input` path **must** point to this mounted directory.
+
 ---
 
 ## Input Format
