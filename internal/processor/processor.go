@@ -34,7 +34,7 @@ func Process(in io.Reader, out io.Writer, filterField, filterValue string, maxRe
 	dec := json.NewDecoder(in)
 	enc := json.NewEncoder(out)
 
-	for maxRecords > 0 && stats.Total >= maxRecords {
+	for maxRecords <= 0 || stats.Total < maxRecords {
 		var rec Record
 
 		if err := dec.Decode(&rec); err != nil {
