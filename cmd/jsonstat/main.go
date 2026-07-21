@@ -39,7 +39,7 @@ func run() error {
 			return fmt.Errorf("open input file: %w", err)
 		}
 
-		defer file.Close()
+		defer file.Close() //nolint:errcheck // read-only input file
 
 		input = file
 	}
